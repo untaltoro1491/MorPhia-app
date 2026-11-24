@@ -1174,7 +1174,7 @@ url:e,reason:"blocked_domain_not_allowlisted"},b.parentOrigin);throw new DOMExce
         <main id="main-views-container" style="max-width:520px;margin:0 auto;padding:14px 14px 24px 14px;">
 
             <!-- VISTA 1: INICIO (PANEL MORPHIA) -->
-            <section id="view-inicio" class="app-view" style="display: none;">
+            <section id="view-inicio" class="app-view linux-view-enter" style="display: block;">
                 <div style="margin-bottom:14px;">
                     <h1 style="margin:0;font-size:21px;font-weight:900;letter-spacing:-0.02em;color:#ffffff;">Panel MorPhia</h1>
                     <p style="margin:2px 0 0 0;font-size:12px;color:#8e8e98;">Resumen operativo de impresión 3D y ventas</p>
@@ -1262,7 +1262,7 @@ url:e,reason:"blocked_domain_not_allowlisted"},b.parentOrigin);throw new DOMExce
             </section>
 
             <!-- VISTA 2: INVENTARIO -->
-            <section id="view-inventario" class="app-view linux-view-enter" style="display: block;">
+            <section id="view-inventario" class="app-view" style="display: none;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                     <div>
                         <h2 style="margin:0;font-size:20px;font-weight:900;letter-spacing:-0.02em;">Inventario MorPhia</h2>
@@ -1512,14 +1512,14 @@ url:e,reason:"blocked_domain_not_allowlisted"},b.parentOrigin);throw new DOMExce
 
         <!-- BARRA DE NAVEGACIÓN INFERIOR ORIGINAL CON ÍCONOS SVG -->
         <nav style="position:fixed;bottom:0;left:0;right:0;z-index:200;background:#070709;border-top:1px solid #18181f;padding:8px 10px 12px 10px;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;">
-            <button type="button" id="nav-inicio" onclick="window.switchTab('inicio')" style="background: transparent; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; border-radius: 14px; padding: 7px 4px; color: rgb(113, 113, 122); display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;">
+            <button type="button" id="nav-inicio" onclick="window.switchTab('inicio')" style="background: rgb(23, 23, 29); border-width: medium; border-style: none; border-color: currentcolor; border-image: none; border-radius: 14px; padding: 7px 4px; color: rgb(57, 255, 20); display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline>
                 </svg>
                 <span style="font-size:10px;font-weight:800;">Inicio</span>
             </button>
 
-            <button type="button" id="nav-inventario" onclick="window.switchTab('inventario')" style="background: rgb(23, 23, 29); border-width: medium; border-style: none; border-color: currentcolor; border-image: none; border-radius: 14px; padding: 7px 4px; color: rgb(57, 255, 20); display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; position: relative;">
+            <button type="button" id="nav-inventario" onclick="window.switchTab('inventario')" style="background: transparent; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; border-radius: 14px; padding: 7px 4px; color: rgb(113, 113, 122); display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; position: relative;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line>
                 </svg>
