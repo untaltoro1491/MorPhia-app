@@ -4,8 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#050507" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MorPhia 3D" />
+  <link id="dynamic-manifest" rel="manifest" />
+  <link id="dynamic-apple-icon" rel="apple-touch-icon" />
   <title>MorPhia 3D | Sistema de Gestión Integral</title>
 
   <!-- Tailwind CSS -->
@@ -721,6 +725,36 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Instalar App / Acceso Directo en Pantalla Completa (PWA Standalone) -->
+          <div class="wm-card p-4 space-y-3 md:col-span-2 border-neonCyan/50 bg-gradient-to-r from-neonCyan/10 via-carbon to-neonPurple/10">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-neonCyan animate-pulse"></span>
+                  <h3 class="text-xs font-mono font-bold text-neonCyan uppercase">Instalar App // Acceso Directo Pantalla Completa</h3>
+                </div>
+                <p id="pwa-install-desc" class="text-xs text-gray-300 leading-relaxed">
+                  Instala <strong>MorPhia 3D</strong> en la pantalla de inicio de tu Android para abrirla como aplicación nativa sin la barra del navegador.
+                </p>
+              </div>
+
+              <div class="flex flex-col items-stretch sm:items-end gap-1.5 shrink-0">
+                <button type="button" id="btn-install-pwa" onclick="triggerPwaInstall()" class="px-4 py-3 rounded-xl bg-neonCyan text-obsidian font-mono text-xs font-bold shadow-[0_0_18px_rgba(0,245,212,0.35)] active:scale-95 transition flex items-center justify-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+                  <span id="btn-install-pwa-label">INSTALAR APP EN ANDROID</span>
+                </button>
+                <span id="pwa-status-badge" class="text-[10px] font-mono text-neonGreen text-center sm:text-right">MODO NAVEGADOR // LISTO PARA INSTALAR</span>
+              </div>
+            </div>
+
+            <!-- Guía visual de respaldo de 2 toques si Chrome/Safari requiere menú manual -->
+            <div id="pwa-manual-guide" class="hidden p-3 rounded-xl bg-obsidian/90 border border-neonAmber/40 text-xs text-gray-200 space-y-1.5">
+              <div class="font-mono text-[11px] font-bold text-neonAmber uppercase">Instalación Manual Rápida (2 Toques):</div>
+              <p class="text-[11px] text-gray-300">1. Toca el menú de opciones de tu navegador (<strong>⋮</strong> arriba a la derecha en Chrome, o el ícono <strong>Compartir</strong> en iPhone).</p>
+              <p class="text-[11px] text-gray-300">2. Selecciona <strong>"Instalar aplicación"</strong> o <strong>"Agregar a la pantalla principal"</strong> y confirma.</p>
+            </div>
+          </div>
+
           <!-- Cambiar PIN de 4 dígitos -->
           <div class="wm-card p-4 space-y-3">
             <h3 class="text-xs font-mono font-bold text-neonCyan uppercase">Seguridad // Cambiar PIN (4 Dígitos)</h3>
@@ -1228,15 +1262,42 @@
   <!-- ===================================================================== -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, onSnapshot, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // Configuración global y espacio compartido para sincronizar los 2 celulares
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'morphia-3d-default';
+    // Credenciales directas de Firebase del proyecto morphia-app
+    const MORPHIA_FIREBASE_CONFIG = {
+      apiKey: "AIzaSyCIRNk9bi89i9TAdRakqcc9nWS576ah19s",
+      authDomain: "morphia-app.firebaseapp.com",
+      projectId: "morphia-app",
+      storageBucket: "morphia-app.firebasestorage.app",
+      messagingSenderId: "750934681044",
+      appId: "1:750934681044:web:683196e04f78d90f03e241",
+      measurementId: "G-JVQ7NJE85N"
+    };
+
+    // Espacio compartido para sincronización en tiempo real entre ambos celulares
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'morphia-app';
     let db = null;
-    let auth = null;
-    let currentUser = null;
     let isCloudReady = false;
+    const LOCAL_BACKUP_KEY = 'morphia_3d_local_state_v1';
+
+    function saveLocalBackup() {
+      try {
+        localStorage.setItem(LOCAL_BACKUP_KEY, JSON.stringify(window.appState));
+      } catch (e) {}
+    }
+
+    function loadLocalBackup() {
+      try {
+        const raw = localStorage.getItem(LOCAL_BACKUP_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          window.appState = { ...window.appState, ...parsed };
+          return true;
+        }
+      } catch (e) {}
+      return false;
+    }
 
     // Estado central reactivo de MorPhia 3D
     window.appState = {
@@ -1270,29 +1331,54 @@
       { id: 'cli-2', name: 'Valeria Montoya', docType: 'CC', docNum: '1020489123', phone: '3019876543', city: 'Bogotá D.C.', address: 'Cra 15 # 93-60 Apto 401', notes: 'Envío por Inter Rapidísimo' }
     ];
 
-    // Inicialización de Firebase con cumplimiento estricto de rutas /artifacts/{appId}/public/data/...
+    function activateLocalFallback(reasonText = 'MODO LOCAL // REVISAR REGLAS FIREBASE') {
+      isCloudReady = false;
+      const syncLabel = document.getElementById('sync-label');
+      const syncDot = document.getElementById('sync-dot');
+      const cloudStatus = document.getElementById('settings-cloud-status');
+      if (syncLabel) syncLabel.textContent = reasonText;
+      if (syncDot) {
+        syncDot.classList.remove('bg-neonGreen');
+        syncDot.classList.add('bg-neonAmber');
+      }
+      if (cloudStatus) cloudStatus.textContent = 'MODO LOCAL (PUBLICAR REGLAS EN FIRESTORE)';
+
+      if (!loadLocalBackup()) {
+        if (window.appState.products.length === 0) window.appState.products = [...SEED_PRODUCTS];
+        if (window.appState.clients.length === 0) window.appState.clients = [...SEED_CLIENTS];
+        if (window.appState.workshopSpools.length === 0) {
+          window.appState.workshopSpools = [
+            { id: 'spool-1', name: 'Filamento PLA+ Negro Mate 1kg', material: 'PLA', color: 'Negro', hex: '#141414', initialGrams: 1000, remainingGrams: 740, openedAt: new Date().toISOString() }
+          ];
+        }
+        saveLocalBackup();
+      }
+      refreshAllViews();
+    }
+
+    // Inicialización directa de Cloud Firestore con tus credenciales de morphia-app
     async function initCloudSync() {
+      loadLocalBackup();
       try {
-        if (typeof __firebase_config === 'undefined' || !__firebase_config) {
-          throw new Error('Configuración Firebase no presente, operando en modo sesión.');
-        }
-        const firebaseConfig = JSON.parse(__firebase_config);
+        const firebaseConfig = (typeof __firebase_config !== 'undefined' && __firebase_config)
+          ? JSON.parse(__firebase_config)
+          : MORPHIA_FIREBASE_CONFIG;
+
         const app = initializeApp(firebaseConfig);
-        auth = getAuth(app);
         db = getFirestore(app);
-
-        // Regla 3: Autenticar ANTES de cualquier consulta
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          const cred = await signInWithCustomToken(auth, __initial_auth_token);
-          currentUser = cred.user;
-        } else {
-          const cred = await signInAnonymously(auth);
-          currentUser = cred.user;
-        }
-
-        if (!currentUser) return;
         isCloudReady = true;
-        document.getElementById('settings-workspace-id').textContent = appId;
+
+        document.getElementById('sync-label').textContent = 'FIRESTORE LIVE // MORPHIA-APP';
+        document.getElementById('sync-dot').classList.remove('bg-neonAmber');
+        document.getElementById('sync-dot').classList.add('bg-neonGreen');
+        document.getElementById('settings-cloud-status').textContent = 'CONECTADO EN VIVO (FIRESTORE)';
+        document.getElementById('settings-workspace-id').textContent = firebaseConfig.projectId || appId;
+
+        const handleFirestoreError = (err) => {
+          if (err && err.code === 'permission-denied') {
+            activateLocalFallback('PERMISOS FIRESTORE // PUBLICAR REGLAS');
+          }
+        };
 
         // Suscripción en tiempo real a Configuración y PIN compartidos
         const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'morphia_config', 'main');
@@ -1301,93 +1387,107 @@
             const data = snap.data();
             if (data.pin) window.appState.pin = data.pin;
             if (data.company) window.appState.company = { ...window.appState.company, ...data.company };
+            saveLocalBackup();
             syncCompanyForms();
           } else {
-            setDoc(configRef, { pin: window.appState.pin, company: window.appState.company });
+            setDoc(configRef, { pin: window.appState.pin, company: window.appState.company }).catch(handleFirestoreError);
           }
-        }, (err) => console.error('Sync config error:', err));
+        }, handleFirestoreError);
 
         // Suscripción a Productos (Inventario General)
         const prodsCol = collection(db, 'artifacts', appId, 'public', 'data', 'morphia_products');
         onSnapshot(prodsCol, (snap) => {
           if (snap.empty && !window._seededProds) {
             window._seededProds = true;
-            SEED_PRODUCTS.forEach(p => setDoc(doc(prodsCol, p.id), p));
+            SEED_PRODUCTS.forEach(p => setDoc(doc(prodsCol, p.id), p).catch(handleFirestoreError));
             return;
           }
           window.appState.products = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          saveLocalBackup();
           refreshAllViews();
-        }, (err) => console.error('Sync products error:', err));
+        }, handleFirestoreError);
 
         // Suscripción a Rollos en Taller (Control por gramos)
         const spoolsCol = collection(db, 'artifacts', appId, 'public', 'data', 'morphia_spools');
         onSnapshot(spoolsCol, (snap) => {
           window.appState.workshopSpools = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          saveLocalBackup();
           refreshAllViews();
-        }, (err) => console.error('Sync spools error:', err));
+        }, handleFirestoreError);
 
         // Suscripción a Otros Ítems en Taller
         const wItemsCol = collection(db, 'artifacts', appId, 'public', 'data', 'morphia_workshop_items');
         onSnapshot(wItemsCol, (snap) => {
           window.appState.workshopItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          saveLocalBackup();
           refreshAllViews();
-        }, (err) => console.error('Sync workshop items error:', err));
+        }, handleFirestoreError);
 
         // Suscripción a Historial de Gramos Consumidos
         const gramsCol = collection(db, 'artifacts', appId, 'public', 'data', 'morphia_grams_logs');
         onSnapshot(gramsCol, (snap) => {
           window.appState.gramsLogs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+          saveLocalBackup();
           refreshAllViews();
-        }, (err) => console.error('Sync grams error:', err));
+        }, handleFirestoreError);
 
         // Suscripción a Clientes
         const clientsCol = collection(db, 'artifacts', appId, 'public', 'data', 'morphia_clients');
         onSnapshot(clientsCol, (snap) => {
           if (snap.empty && !window._seededClients) {
             window._seededClients = true;
-            SEED_CLIENTS.forEach(c => setDoc(doc(clientsCol, c.id), c));
+            SEED_CLIENTS.forEach(c => setDoc(doc(clientsCol, c.id), c).catch(handleFirestoreError));
             return;
           }
           window.appState.clients = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          saveLocalBackup();
           refreshAllViews();
-        }, (err) => console.error('Sync clients error:', err));
+        }, handleFirestoreError);
 
         // Suscripción a Movimientos Financieros (Ventas, Compras, Gastos)
         const movCol = collection(db, 'artifacts', appId, 'public', 'data', 'morphia_movements');
         onSnapshot(movCol, (snap) => {
           window.appState.movements = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+          saveLocalBackup();
           refreshAllViews();
-        }, (err) => console.error('Sync movements error:', err));
+        }, handleFirestoreError);
 
         // Suscripción a Historial de Guías
         const shipCol = collection(db, 'artifacts', appId, 'public', 'data', 'morphia_shipments');
         onSnapshot(shipCol, (snap) => {
           window.appState.shipments = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-        }, (err) => console.error('Sync shipments error:', err));
+          saveLocalBackup();
+        }, handleFirestoreError);
 
       } catch (e) {
-        console.warn('Modo offline/memoria activo:', e.message);
-        document.getElementById('sync-label').textContent = 'MODO LOCAL // SIN NUBE';
-        document.getElementById('sync-dot').classList.replace('bg-neonGreen', 'bg-neonAmber');
-        window.appState.products = [...SEED_PRODUCTS];
-        window.appState.clients = [...SEED_CLIENTS];
-        window.appState.workshopSpools = [
-          { id: 'spool-1', name: 'Filamento PLA+ Negro Mate 1kg', material: 'PLA', color: 'Negro', hex: '#141414', initialGrams: 1000, remainingGrams: 740, openedAt: new Date().toISOString() }
-        ];
-        refreshAllViews();
+        activateLocalFallback('MODO LOCAL // SIN CONEXIÓN');
       }
     }
 
-    // Helpers de escritura en Firestore con respaldo en memoria inmediata
+    // Helpers de escritura directa en Cloud Firestore con respaldo local inmediato
     window.cloudSaveDoc = async function(colName, docId, payload) {
-      if (isCloudReady && currentUser) {
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', colName, docId), payload, { merge: true });
+      saveLocalBackup();
+      if (isCloudReady && db) {
+        try {
+          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', colName, docId), payload, { merge: true });
+        } catch (err) {
+          if (err && err.code === 'permission-denied') {
+            activateLocalFallback('PERMISOS FIRESTORE // PUBLICAR REGLAS');
+          }
+        }
       }
     };
 
     window.cloudDeleteDoc = async function(colName, docId) {
-      if (isCloudReady && currentUser) {
-        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', colName, docId));
+      saveLocalBackup();
+      if (isCloudReady && db) {
+        try {
+          await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', colName, docId));
+        } catch (err) {
+          if (err && err.code === 'permission-denied') {
+            activateLocalFallback('PERMISOS FIRESTORE // PUBLICAR REGLAS');
+          }
+        }
       }
     };
 
@@ -1395,7 +1495,7 @@
   </script>
 
   <!-- ===================================================================== -->
-  <!-- SCRIPT PRINCIPAL DE INTERFAZ, CÁLCULOS, ESCÁNER, PDF/JPG Y EXCEL -->
+  <!-- SCRIPT PRINCIPAL DE INTERFAZ, PWA STANDALONE, CÁLCULOS, PDF/JPG Y EXCEL -->
   <!-- ===================================================================== -->
   <script>
     // Formateador Moneda Colombia (COP)
@@ -1403,6 +1503,163 @@
       const num = Number(val) || 0;
       return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(num);
     };
+
+    // -----------------------------------------------------------------------
+    // 0. MOTOR PWA STANDALONE (MANIFIESTO DINÁMICO + ÍCONO MORPHIA 3D + BOTÓN INSTALAR)
+    // -----------------------------------------------------------------------
+    let deferredInstallPrompt = null;
+
+    function buildMorphiaAppIconDataUrl(size) {
+      const c = document.createElement('canvas');
+      c.width = size;
+      c.height = size;
+      const ctx = c.getContext('2d');
+
+      // Fondo negro profundo con acento sutil MorPhia
+      ctx.fillStyle = '#050507';
+      ctx.fillRect(0, 0, size, size);
+
+      // Dibujar logo exacto de MorPhia 3D centrado en blanco/cian
+      const cx = size / 2;
+      const cy = size / 2;
+      const radius = size * 0.38;
+
+      ctx.save();
+      ctx.translate(cx - radius, cy - radius);
+      const scale = (radius * 2) / 1000;
+      ctx.scale(scale, scale);
+      ctx.strokeStyle = '#00F5D4';
+      ctx.lineCap = 'butt';
+      ctx.lineJoin = 'round';
+
+      ctx.lineWidth = 58;
+      ctx.beginPath();
+      ctx.arc(500, 500, 452, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 88;
+      ctx.beginPath();
+      ctx.moveTo(232, 695);
+      ctx.lineTo(232, 385);
+      ctx.arc(360, 385, 128, Math.PI, 0, false);
+      ctx.lineTo(488, 640);
+      ctx.arc(643, 640, 155, Math.PI, Math.PI * 0.5, true);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(640, 385, 152, Math.PI, Math.PI * 0.5, false);
+      ctx.lineTo(488, 537);
+      ctx.stroke();
+      ctx.restore();
+
+      return c.toDataURL('image/png');
+    }
+
+    function initDynamicPwaManifest() {
+      try {
+        const icon192 = buildMorphiaAppIconDataUrl(192);
+        const icon512 = buildMorphiaAppIconDataUrl(512);
+
+        const appleIconLink = document.getElementById('dynamic-apple-icon');
+        if (appleIconLink) appleIconLink.href = icon192;
+
+        const baseUrl = window.location.href.split('#')[0].split('?')[0];
+        const manifestObj = {
+          name: 'MorPhia 3D',
+          short_name: 'MorPhia 3D',
+          description: 'Gestión integral de negocio de impresión 3D e insumos',
+          start_url: baseUrl,
+          scope: baseUrl.substring(0, baseUrl.lastIndexOf('/') + 1),
+          display: 'standalone',
+          orientation: 'portrait',
+          background_color: '#050507',
+          theme_color: '#050507',
+          icons: [
+            { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+            { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+          ]
+        };
+
+        const blob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
+        const manifestUrl = URL.createObjectURL(blob);
+        const manifestLink = document.getElementById('dynamic-manifest');
+        if (manifestLink) manifestLink.href = manifestUrl;
+
+        // Registrar Service Worker ligero en memoria para habilitar prompt nativo en Chrome Android
+        if ('serviceWorker' in navigator) {
+          const swCode = `
+            self.addEventListener('install', (e) => self.skipWaiting());
+            self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+            self.addEventListener('fetch', (e) => {});
+          `;
+          const swBlob = new Blob([swCode], { type: 'application/javascript' });
+          const swUrl = URL.createObjectURL(swBlob);
+          navigator.serviceWorker.register(swUrl).catch(() => {});
+        }
+      } catch (err) {
+        console.warn('PWA init warning:', err);
+      }
+      updatePwaInstallUI();
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      updatePwaInstallUI();
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredInstallPrompt = null;
+      updatePwaInstallUI();
+      showToast('MorPhia 3D instalada en tu pantalla de inicio', 'neonGreen');
+    });
+
+    function updatePwaInstallUI() {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      const btn = document.getElementById('btn-install-pwa');
+      const label = document.getElementById('btn-install-pwa-label');
+      const badge = document.getElementById('pwa-status-badge');
+      const desc = document.getElementById('pwa-install-desc');
+      if (!btn || !label || !badge) return;
+
+      if (isStandalone) {
+        label.textContent = 'APP INSTALADA Y ACTIVA';
+        btn.className = 'px-4 py-3 rounded-xl bg-neonGreen/20 border border-neonGreen text-neonGreen font-mono text-xs font-bold flex items-center justify-center gap-2';
+        badge.textContent = 'MODO PANTALLA COMPLETA (STANDALONE) ACTIVO';
+        badge.className = 'text-[10px] font-mono text-neonGreen text-center sm:text-right';
+        if (desc) desc.textContent = 'Ya estás ejecutando MorPhia 3D como aplicación instalada sin barra de navegador.';
+      } else if (deferredInstallPrompt) {
+        label.textContent = 'INSTALAR APP EN ANDROID AHORA';
+        btn.className = 'px-4 py-3 rounded-xl bg-neonCyan text-obsidian font-mono text-xs font-bold shadow-[0_0_20px_rgba(0,245,212,0.45)] active:scale-95 transition flex items-center justify-center gap-2';
+        badge.textContent = 'INSTALACIÓN DIRECTA DISPONIBLE';
+        badge.className = 'text-[10px] font-mono text-neonCyan text-center sm:text-right';
+      } else {
+        label.textContent = 'CREAR ACCESO DIRECTO / INSTALAR';
+        badge.textContent = 'ABRIR SIN BARRA DEL NAVEGADOR';
+      }
+    }
+
+    async function triggerPwaInstall() {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      if (isStandalone) {
+        showToast('La app ya está instalada en pantalla completa', 'neonGreen');
+        return;
+      }
+
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        if (outcome === 'accepted') {
+          deferredInstallPrompt = null;
+          updatePwaInstallUI();
+        }
+      } else {
+        const guide = document.getElementById('pwa-manual-guide');
+        if (guide) guide.classList.toggle('hidden');
+        showToast('Usa ⋮ > Instalar aplicación en tu navegador', 'neonAmber');
+      }
+    }
 
     // Toast visual minimalista
     function showToast(msg, color = 'neonCyan') {
@@ -1420,6 +1677,8 @@
     let currentPinBuffer = '';
 
     window.addEventListener('DOMContentLoaded', () => {
+      initDynamicPwaManifest();
+
       // Animar barra de progreso del splash
       setTimeout(() => {
         const bar = document.getElementById('splash-bar');
