@@ -597,7 +597,7 @@
               <button type="submit" class="py-2.5 px-3 rounded-xl bg-neonGreen text-obsidian font-mono text-xs font-extrabold hover:opacity-90 active:scale-95 transition">
                 GUARDAR Y ACTIVAR
               </button>
-              <button type="button" onclick="syncToGoogleSheetsNow(true)" class="py-2.5 px-3 rounded-xl bg-neonCyan/20 border border-neonCyan/50 text-neonCyan font-mono text-xs font-bold hover:bg-neonCyan/30 active:scale-95 transition">
+              <button type="button" onclick="syncToGoogleSheetsNow(true)" class="py-2.5 px-3 rounded-xl bg-neonCyan/20 border border-neonCyan/50 text-neonCyan font-mono text-xs font-bold hover:bg-neonCyan/30 transition">
                 ↻ SINCRONIZAR AHORA
               </button>
               <button type="button" onclick="copyGoogleAppsScriptCode()" class="py-2.5 px-3 rounded-xl bg-white/10 border border-white/20 text-white font-mono text-xs font-bold hover:border-neonCyan transition">
@@ -2739,24 +2739,25 @@
         const sheets = buildWorkbookSheetsData();
         const formBody = new URLSearchParams();
         formBody.append('payload', JSON.stringify({ sheets }));
-
         await fetch(url, {
           method: 'POST',
           mode: 'no-cors',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
           body: formBody.toString()
         });
-        if (notify) showToast('Sincronización enviada a Google Sheets', 'neonGreen');
+        if (notify) showToast('Datos enviados a Google Sheets en vivo', 'neonGreen');
       } catch (err) {
         console.warn('Error enviando a Google Sheets:', err);
-        if (notify) showToast('Error de red al sincronizar Sheets', 'neonMagenta');
+        if (notify) showToast('Error al conectar con Google Sheets', 'neonMagenta');
       }
     }
 
     const GOOGLE_APPS_SCRIPT_TEMPLATE = [
       "function doPost(e) {",
       "  try {",
-      "    var raw = (e && e.parameter && e.parameter.payload) ? e.parameter.payload : (e && e.postData ? e.postData.contents : '{}');",
+      "    var raw = (e && e.parameter && e.parameter.payload)",
+      "      ? e.parameter.payload",
+      "      : (e && e.postData && e.postData.contents ? e.postData.contents : '{}');",
       "    var payload = JSON.parse(raw);",
       "    var ss = SpreadsheetApp.getActiveSpreadsheet();",
       "    var sheets = payload.sheets || {};",
