@@ -858,13 +858,39 @@
       </div>
       <form onsubmit="handleSaveProduct(event)" class="space-y-3">
         <input type="hidden" id="prod-id" />
-        <div>
-          <label class="block text-[10px] font-mono text-gray-400 uppercase mb-1">Nombre del Producto / Filamento</label>
-          <input id="prod-name" type="text" required placeholder="Ej. Filamento PLA+ Negro 1kg" class="w-full bg-obsidian border border-white/15 rounded-xl px-3 py-2.5 text-xs text-white" />
+        <div class="space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <label class="block text-[10px] font-mono text-gray-400 uppercase">Marca / Nombre Base (Lista Rápida)</label>
+            <button type="button" onclick="toggleAddBrandBox()" class="text-[10px] font-mono text-neonCyan hover:underline font-bold">+ AGREGAR MARCA</button>
+          </div>
+          <div class="flex gap-1.5">
+            <select id="prod-brand-select" onchange="applyBrandSelectionToProductName()" class="flex-1 bg-obsidian border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-neonCyan">
+              <option value="">-- Seleccionar marca guardada --</option>
+            </select>
+            <button type="button" onclick="deleteSelectedBrandFromList()" title="Eliminar marca seleccionada de la lista" class="px-2.5 py-2 rounded-xl bg-neonMagenta/15 border border-neonMagenta/30 text-neonMagenta font-mono text-[10px] font-bold shrink-0">✕</button>
+          </div>
+          <div id="prod-add-brand-box" class="hidden flex gap-1.5 pt-0.5">
+            <input id="prod-new-brand-input" type="text" placeholder="Ej. eSUN PLA+, Creality, Sunlu, Bambu Lab..." class="flex-1 bg-obsidian border border-neonCyan/50 rounded-xl px-3 py-2 text-xs text-white focus:outline-none" />
+            <button type="button" onclick="handleAddProductBrand()" class="px-3 py-2 rounded-xl bg-neonCyan text-obsidian font-mono text-[10px] font-extrabold shrink-0">GUARDAR</button>
+          </div>
+          <div class="space-y-1.5 pt-1">
+            <div class="flex items-center justify-between gap-2">
+              <label class="block text-[10px] font-mono text-gray-400 uppercase">Nombre Guardado (Escoger / Quitar)</label>
+              <button type="button" onclick="handleAddSavedProductName()" class="text-[10px] font-mono text-neonGreen hover:underline font-bold">+ GUARDAR NOMBRE</button>
+            </div>
+            <div class="flex gap-1.5">
+              <select id="prod-saved-name-select" onchange="applySavedProductNameSelection()" class="flex-1 bg-obsidian border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-neonCyan">
+                <option value="">-- Seleccionar nombre guardado --</option>
+              </select>
+              <button type="button" onclick="deleteSelectedSavedProductName()" title="Eliminar nombre seleccionado de la lista" class="px-2.5 py-2 rounded-xl bg-neonMagenta/15 border border-neonMagenta/30 text-neonMagenta font-mono text-[10px] font-bold shrink-0">✕</button>
+            </div>
+            <label class="block text-[10px] font-mono text-gray-400 uppercase mb-1">Nombre del Producto / Filamento</label>
+            <input id="prod-name" type="text" required placeholder="Ej. eSUN Filamento PLA+ Negro 1kg" class="w-full bg-obsidian border border-white/15 rounded-xl px-3 py-2.5 text-xs text-white" />
+          </div>
         </div>
         <div class="grid grid-cols-2 gap-2.5">
           <div>
-            <label class="block text-[10px] font-mono text-gray-400 uppercase mb-1">Categoría / Tipo</label>
+            <label class="block text-[10px] font-mono text-gray-400 uppercase mb-1">Tipo de Material / Categoría</label>
             <select id="prod-category" class="w-full bg-obsidian border border-white/15 rounded-xl px-3 py-2.5 text-xs text-white">
               <option value="Filamento PLA">Filamento PLA</option>
               <option value="Filamento PETG">Filamento PETG</option>
@@ -881,8 +907,8 @@
           <div>
             <label class="block text-[10px] font-mono text-gray-400 uppercase mb-1">Color / Variante</label>
             <div class="flex items-center gap-2">
-              <input id="prod-color-hex" type="color" value="#00f5d4" onchange="syncColorNameFromHex(this.value)" title="Seleccionar tono exacto" class="w-10 h-10 p-0.5 rounded-xl bg-obsidian border border-white/15 cursor-pointer shrink-0" />
-              <input id="prod-color" type="text" placeholder="Ej. Negro / 0.4mm" class="w-full bg-obsidian border border-white/15 rounded-xl px-3 py-2.5 text-xs text-white" />
+              <input id="prod-color-hex" type="color" value="#00f5d4" onchange="syncColorNameFromHex(this.value)" class="w-10 h-10 p-0.5 rounded-xl bg-obsidian border border-white/15 cursor-pointer shrink-0" />
+              <input id="prod-color" type="text" placeholder="Ej. Negro" class="w-full bg-obsidian border border-white/15 rounded-xl px-3 py-2.5 text-xs text-white" />
             </div>
           </div>
         </div>
@@ -1374,6 +1400,8 @@
             if (d.pin) window.appState.pin = d.pin;
             if (typeof d.googleSheetsUrl === 'string') window.appState.googleSheetsUrl = d.googleSheetsUrl;
             if (d.company) window.appState.company = { ...window.appState.company, ...d.company };
+            if (Array.isArray(d.productBrands)) window.appState.productBrands = d.productBrands;
+            if (Array.isArray(d.savedProductNames)) window.appState.savedProductNames = d.savedProductNames;
             window.saveLocalBackup();
             window.renderAll();
           }
@@ -1425,6 +1453,24 @@
     window.appState = {
       pin: '1234',
       googleSheetsUrl: '',
+      productBrands: [
+        'eSUN PLA+',
+        'Creality Ender PLA',
+        'Sunlu PLA+',
+        'Bambu Lab Basic',
+        'Elegoo Rapid PLA+',
+        'Boquilla Latón MK8',
+        'Cama Magnética PEI',
+        'Spray Adherencia 3DLAC'
+      ],
+      savedProductNames: [
+        'Filamento PLA+ Negro 1kg',
+        'Filamento PLA+ Blanco 1kg',
+        'Filamento PETG Gris 1kg',
+        'Boquilla Latón MK8 0.4mm',
+        'Cama Magnética PEI Texturizada',
+        'Spray Adherencia 3DLAC 400ml'
+      ],
       company: {
         name: 'MorPhia 3D',
         nit: '901.842.310-4',
@@ -2175,6 +2221,131 @@
       if (nameInput && !nameInput.value.trim()) nameInput.value = hex.toUpperCase();
     }
 
+    function populateProductBrandsDropdown(selectedVal = '') {
+      const sel = document.getElementById('prod-brand-select');
+      if (!sel) return;
+      const brands = [...(window.appState.productBrands || [])].sort((a, b) => a.localeCompare(b, 'es'));
+      sel.innerHTML = `<option value="">-- Seleccionar marca / producto base (${brands.length}) --</option>` +
+        brands.map((b) => `<option value="${b}">${b}</option>`).join('');
+      if (selectedVal) sel.value = selectedVal;
+    }
+
+    function toggleAddBrandBox(forceState = null) {
+      const box = document.getElementById('prod-add-brand-box');
+      if (!box) return;
+      const shouldShow = forceState !== null ? forceState : box.classList.contains('hidden');
+      box.classList.toggle('hidden', !shouldShow);
+      if (shouldShow) {
+        const inp = document.getElementById('prod-new-brand-input');
+        if (inp) {
+          inp.value = '';
+          inp.focus();
+        }
+      }
+    }
+
+    async function handleAddProductBrand() {
+      const inp = document.getElementById('prod-new-brand-input');
+      const brand = (inp?.value || '').trim();
+      if (!brand) {
+        showToast('Escribe el nombre de la marca', 'neonAmber');
+        return;
+      }
+      const list = window.appState.productBrands || [];
+      const exists = list.some((b) => b.toLowerCase() === brand.toLowerCase());
+      if (!exists) {
+        list.push(brand);
+        window.appState.productBrands = list;
+        window.saveLocalBackup();
+        await window.cloudSaveDoc('morphia_config', 'main', { productBrands: list });
+      }
+      populateProductBrandsDropdown(brand);
+      applyBrandSelectionToProductName();
+      toggleAddBrandBox(false);
+      showToast(`Marca "${brand}" guardada en la lista`, 'neonCyan');
+    }
+
+    async function deleteSelectedBrandFromList() {
+      const sel = document.getElementById('prod-brand-select');
+      const val = (sel?.value || '').trim();
+      if (!val) {
+        showToast('Selecciona primero una marca de la lista', 'neonAmber');
+        return;
+      }
+      window.appState.productBrands = (window.appState.productBrands || []).filter((b) => b !== val);
+      window.saveLocalBackup();
+      populateProductBrandsDropdown('');
+      await window.cloudSaveDoc('morphia_config', 'main', { productBrands: window.appState.productBrands });
+      showToast(`Marca "${val}" eliminada de la lista`, 'neonMagenta');
+    }
+
+    function applyBrandSelectionToProductName() {
+      const sel = document.getElementById('prod-brand-select');
+      const brand = (sel?.value || '').trim();
+      if (!brand) return;
+      const nameInput = document.getElementById('prod-name');
+      const color = (document.getElementById('prod-color')?.value || '').trim();
+      const weight = Number(document.getElementById('prod-weight')?.value) || 0;
+      const parts = [brand];
+      if (color) parts.push(color);
+      if (weight > 0) parts.push(`${weight}g`);
+      if (nameInput) nameInput.value = parts.join(' ');
+    }
+
+    function populateSavedProductNamesDropdown(selectedVal = '') {
+      const sel = document.getElementById('prod-saved-name-select');
+      if (!sel) return;
+      const combined = new Set(window.appState.savedProductNames || []);
+      (window.appState.products || []).forEach((p) => {
+        if (p.name && p.name.trim()) combined.add(p.name.trim());
+      });
+      const names = [...combined].sort((a, b) => a.localeCompare(b, 'es'));
+      sel.innerHTML = `<option value="">-- Seleccionar nombre guardado (${names.length}) --</option>` +
+        names.map((n) => `<option value="${n.replace(/"/g, '&quot;')}">${n}</option>`).join('');
+      if (selectedVal) sel.value = selectedVal;
+    }
+
+    function applySavedProductNameSelection() {
+      const sel = document.getElementById('prod-saved-name-select');
+      const val = (sel?.value || '').trim();
+      if (!val) return;
+      const nameInput = document.getElementById('prod-name');
+      if (nameInput) nameInput.value = val;
+    }
+
+    async function handleAddSavedProductName() {
+      const nameInput = document.getElementById('prod-name');
+      const val = (nameInput?.value || '').trim();
+      if (!val) {
+        showToast('Escribe primero el nombre del producto arriba o abajo', 'neonAmber');
+        if (nameInput) nameInput.focus();
+        return;
+      }
+      const list = window.appState.savedProductNames || [];
+      if (!list.some((n) => n.toLowerCase() === val.toLowerCase())) {
+        list.push(val);
+        window.appState.savedProductNames = list;
+        window.saveLocalBackup();
+        await window.cloudSaveDoc('morphia_config', 'main', { savedProductNames: list });
+      }
+      populateSavedProductNamesDropdown(val);
+      showToast(`Nombre "${val}" guardado en la lista`, 'neonGreen');
+    }
+
+    async function deleteSelectedSavedProductName() {
+      const sel = document.getElementById('prod-saved-name-select');
+      const val = (sel?.value || '').trim();
+      if (!val) {
+        showToast('Selecciona primero un nombre de la lista', 'neonAmber');
+        return;
+      }
+      window.appState.savedProductNames = (window.appState.savedProductNames || []).filter((n) => n !== val);
+      window.saveLocalBackup();
+      populateSavedProductNamesDropdown('');
+      await window.cloudSaveDoc('morphia_config', 'main', { savedProductNames: window.appState.savedProductNames });
+      showToast(`Nombre "${val}" quitado de la lista`, 'neonMagenta');
+    }
+
     function openProductModal(productId = null) {
       const form = document.querySelector('#modal-product form');
       if (form) form.reset();
@@ -2182,6 +2353,9 @@
       document.getElementById('prod-color-hex').value = '#00f5d4';
       document.getElementById('prod-weight').value = 1000;
       document.getElementById('modal-product-title').textContent = 'Nuevo Producto';
+      toggleAddBrandBox(false);
+      populateProductBrandsDropdown('');
+      populateSavedProductNamesDropdown('');
 
       if (productId) {
         const p = (window.appState.products || []).find((x) => x.id === productId);
@@ -2189,6 +2363,7 @@
           document.getElementById('modal-product-title').textContent = 'Editar Producto';
           document.getElementById('prod-id').value = p.id;
           document.getElementById('prod-name').value = p.name || '';
+          populateSavedProductNamesDropdown(p.name || '');
           document.getElementById('prod-category').value = p.category || 'Filamento PLA';
           document.getElementById('prod-color-hex').value = p.colorHex || '#00f5d4';
           document.getElementById('prod-color').value = p.color || '';
@@ -2213,8 +2388,9 @@
       e.preventDefault();
       const existingId = document.getElementById('prod-id').value;
       const id = existingId || ('prod_' + Date.now());
+      const prodNameVal = document.getElementById('prod-name').value.trim();
       const data = {
-        name: document.getElementById('prod-name').value.trim(),
+        name: prodNameVal,
         category: document.getElementById('prod-category').value,
         colorHex: document.getElementById('prod-color-hex').value || '#00f5d4',
         color: document.getElementById('prod-color').value.trim(),
@@ -2227,6 +2403,15 @@
         maxStock: Number(document.getElementById('prod-max').value) || 20
       };
 
+      // Guardar automáticamente el nombre en la lista rápida para futuras ocasiones
+      const savedNames = window.appState.savedProductNames || [];
+      let namesUpdated = false;
+      if (prodNameVal && !savedNames.some((n) => n.toLowerCase() === prodNameVal.toLowerCase())) {
+        savedNames.push(prodNameVal);
+        window.appState.savedProductNames = savedNames;
+        namesUpdated = true;
+      }
+
       const list = window.appState.products || [];
       const idx = list.findIndex((x) => x.id === id);
       if (idx >= 0) list[idx] = { id, ...data };
@@ -2236,6 +2421,9 @@
       renderAll();
       closeModal('modal-product');
       await window.cloudSaveDoc('morphia_products', id, data);
+      if (namesUpdated) {
+        await window.cloudSaveDoc('morphia_config', 'main', { savedProductNames: savedNames });
+      }
       syncToGoogleSheetsNow();
       showToast('Producto clasificado y guardado', 'neonCyan');
     }
@@ -3131,40 +3319,99 @@
     // ETIQUETA DE PRODUCTO + ESCÁNER DE CÓDIGO DE BARRAS
     // =========================================================================
     let activeScannedProduct = null;
+    let activeProductBarcodeSku = 'MRP-000000';
 
     function openProductBarcodeModal(productId) {
       const p = (window.appState.products || []).find((x) => x.id === productId);
       const canvas = document.getElementById('product-label-canvas');
       if (!p || !canvas) return;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      activeProductBarcodeSku = (p.sku || 'MRP-000000').trim();
 
-      ctx.strokeStyle = '#07080c';
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+
+      // Fondo blanco puro y marco rectangular negro nítido
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.strokeStyle = '#000000';
       ctx.lineWidth = 6;
-      drawRoundedRectCanvas(ctx, 18, 18, canvas.width - 36, canvas.height - 36, 20);
+      ctx.strokeRect(24, 24, W - 48, H - 48);
+
+      // Logotipo circular MorPhia 3D en negro (trazo exacto del logo) arriba a la izquierda
+      ctx.save();
+      ctx.translate(64, 54);
+      const logoScale = 64 / 1000;
+      ctx.scale(logoScale, logoScale);
+      ctx.beginPath();
+      ctx.arc(500, 500, 452, 0, Math.PI * 2);
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 64;
       ctx.stroke();
 
-      ctx.fillStyle = '#07080c';
-      ctx.font = 'bold 34px Inter, sans-serif';
-      ctx.fillText((p.name || 'Producto').slice(0, 34), 48, 78);
+      const monogram = new Path2D(
+        'M 185 655 L 185 375 C 185 235 290 175 385 175 C 435 175 475 195 500 225 C 528 195 572 175 625 175 C 745 175 835 255 835 365 C 835 475 745 555 625 555 L 505 555 L 505 615 C 505 695 545 730 625 730 L 625 825 C 485 825 410 755 410 615 L 410 375 C 410 305 375 270 335 270 C 295 270 280 305 280 375 L 280 655 Z M 505 375 L 505 460 L 620 460 C 690 460 740 420 740 365 C 740 310 690 270 620 270 C 550 270 505 310 505 375 Z'
+      );
+      ctx.fillStyle = '#000000';
+      ctx.fill(monogram, 'evenodd');
+      ctx.restore();
 
-      ctx.font = 'bold 26px JetBrains Mono, monospace';
-      ctx.fillText(`${p.category || ''} ${p.color ? '• ' + p.color : ''} • ${formatCOP(p.price)}`, 48, 122);
+      // Marca arriba a la izquierda junto al logo
+      const brandLabel = ((window.appState.company?.name || 'MORPHÍA 3D').replace(/morphia/i, 'MORPHÍA')).toUpperCase();
+      ctx.fillStyle = '#000000';
+      ctx.font = '800 34px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(brandLabel, 146, 98);
 
-      if (window.JsBarcode && p.sku) {
+      // Precio arriba a la derecha en fuente monoespaciada en negrita
+      ctx.font = '700 44px "JetBrains Mono", monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(formatCOP(p.price), W - 64, 102);
+
+      // Línea divisoria horizontal
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(64, 145);
+      ctx.lineTo(W - 64, 145);
+      ctx.stroke();
+
+      // Nombre del producto centrado en negrita mayúsculas
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#000000';
+      ctx.font = '800 40px Inter, sans-serif';
+      ctx.fillText((p.name || 'PRODUCTO').toUpperCase().slice(0, 40), W / 2, 212);
+
+      // Subtítulo centrado: Categoría • Color (ej. PETG • Cian)
+      const shortCat = (p.category || '').replace(/^Filamento\s+/i, '').trim();
+      const subParts = [];
+      if (shortCat) subParts.push(shortCat);
+      if (p.color) subParts.push(p.color);
+      ctx.font = '500 28px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#111827';
+      ctx.fillText(subParts.join('  •  ') || (p.category || ''), W / 2, 264);
+
+      // Código de barras CODE128 centrado con texto SKU debajo
+      if (window.JsBarcode && activeProductBarcodeSku) {
         const tmp = document.createElement('canvas');
-        JsBarcode(tmp, p.sku, {
+        JsBarcode(tmp, activeProductBarcodeSku, {
           format: 'CODE128',
           width: 4,
-          height: 150,
+          height: 155,
           displayValue: true,
-          fontSize: 32,
-          margin: 8
+          font: 'JetBrains Mono',
+          fontOptions: 'bold',
+          fontSize: 34,
+          textMargin: 12,
+          margin: 0
         });
-        ctx.drawImage(tmp, (canvas.width - 720) / 2, 160, 720, 380);
+        const targetW = Math.min(W - 180, Math.max(760, tmp.width));
+        const targetH = 240;
+        ctx.drawImage(tmp, (W - targetW) / 2, 330, targetW, targetH);
       }
 
+      ctx.textAlign = 'left';
       openModal('modal-barcode');
     }
 
@@ -3534,6 +3781,8 @@
       renderDashboard();
       renderInventory();
       renderClients();
+      populateProductBrandsDropdown();
+      populateSavedProductNamesDropdown();
       populateShippingClientDropdown();
       populateQuoterMaterialSources();
       populateQuoterClientDropdown();
@@ -3557,6 +3806,15 @@
       closeModal,
       pickQuickFilamentColor,
       syncColorNameFromHex,
+      populateProductBrandsDropdown,
+      toggleAddBrandBox,
+      handleAddProductBrand,
+      deleteSelectedBrandFromList,
+      applyBrandSelectionToProductName,
+      populateSavedProductNamesDropdown,
+      applySavedProductNameSelection,
+      handleAddSavedProductName,
+      deleteSelectedSavedProductName,
       openProductModal,
       generateRandomSku,
       handleSaveProduct,
