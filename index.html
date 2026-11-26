@@ -111,24 +111,35 @@
     }
 
     @media print {
-      body * { visibility: hidden !important; }
-      #print-thermal-zone, #print-thermal-zone * { visibility: visible !important; }
-      #print-thermal-zone {
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 100mm !important;
-        height: 100mm !important;
+      @page {
+        margin: 0;
+      }
+      html, body {
+        background: #ffffff !important;
         margin: 0 !important;
         padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+      }
+      body > *:not(#print-thermal-zone) {
+        display: none !important;
+      }
+      #print-thermal-zone {
+        display: block !important;
+        visibility: visible !important;
+        position: static !important;
+        width: 100% !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
         background: #ffffff !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
+        text-align: center !important;
       }
       #print-thermal-img {
-        width: 100mm !important;
-        height: 100mm !important;
+        display: block !important;
+        visibility: visible !important;
+        width: 100% !important;
+        height: auto !important;
+        margin: 0 auto !important;
         object-fit: contain !important;
       }
     }
@@ -3194,21 +3205,75 @@
 
     function printThermalCanvas(canvasId, recordGuide = false) {
       const canvas = document.getElementById(canvasId);
-      if (!canvas) return;
-      const img = document.getElementById('print-thermal-img');
-      if (img) img.src = canvas.toDataURL('image/png');
+      if (!canvas) {
+        showToast('No se encontró el lienzo de impresión', 'neonMagenta');
+        return;
+      }
       if (recordGuide) {
         saveGuideRecord();
       }
-      window.print();
+
+      const isGuide = canvasId === 'shipping-preview-canvas';
+      const pageWidthMm = 100;
+      const pageHeightMm = isGuide ? 100 : 52;
+
+      // Generar un PDF nativo del tamaño térmico exacto (100x52mm o 100x100mm) para que Android/Chrome/PC lo abran siempre
+      if (window.jspdf) {
+        try {
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF({
+            orientation: isGuide ? 'portrait' : 'landscape',
+            unit: 'mm',
+            format: [pageWidthMm, pageHeightMm]
+          });
+          pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pageWidthMm, pageHeightMm);
+          pdf.autoPrint({ variant: 'non-conform' });
+          const blob = pdf.output('blob');
+          const blobUrl = URL.createObjectURL(blob);
+
+          const opened = window.open(blobUrl, '_blank');
+          if (opened) {
+            showToast(`Abriendo vista térmica (${pageWidthMm}x${pageHeightMm}mm)`, 'neonCyan');
+            return;
+          }
+
+          // Respaldo directo en el mismo hilo del clic si el navegador bloquea ventanas nuevas
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.target = '_blank';
+          link.rel = 'noopener';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          showToast(`Abriendo etiqueta térmica (${pageWidthMm}x${pageHeightMm}mm)`, 'neonCyan');
+          return;
+        } catch (e) {
+          console.warn('Error generando PDF térmico directo:', e);
+        }
+      }
+
+      // Respaldo final con diálogo de impresión de página si jsPDF no estuviera disponible
+      const dataUrl = canvas.toDataURL('image/png');
+      const zone = document.getElementById('print-thermal-zone');
+      const img = document.getElementById('print-thermal-img');
+      if (zone && img) {
+        img.src = dataUrl;
+        zone.classList.remove('hidden');
+        setTimeout(() => {
+          window.print();
+          zone.classList.add('hidden');
+        }, 120);
+      }
     }
 
     function exportCanvasJPG(canvasId, baseName) {
       const canvas = document.getElementById(canvasId);
       if (!canvas) return;
-      if (canvasId === 'shipping-preview-canvas') saveGuideRecord();
+      const isGuide = canvasId === 'shipping-preview-canvas';
+      if (isGuide) saveGuideRecord();
+      const suffix = isGuide ? activeGuideCode : activeProductBarcodeSku;
       const link = document.createElement('a');
-      link.download = `${baseName}_${activeGuideCode}.jpg`;
+      link.download = `${baseName}_${suffix}.jpg`;
       link.href = canvas.toDataURL('image/jpeg', 0.95);
       link.click();
       showToast('JPG descargado', 'neonPurple');
@@ -3221,12 +3286,22 @@
     function exportCanvasPDF(canvasId, baseName) {
       const canvas = document.getElementById(canvasId);
       if (!canvas || !window.jspdf) return;
-      if (canvasId === 'shipping-preview-canvas') saveGuideRecord();
+      const isGuide = canvasId === 'shipping-preview-canvas';
+      if (isGuide) saveGuideRecord();
+
+      const widthMm = 100;
+      const heightMm = isGuide ? 100 : 52;
+      const suffix = isGuide ? activeGuideCode : activeProductBarcodeSku;
+
       const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [100, 100] });
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 100, 100);
-      pdf.save(`${baseName}_${activeGuideCode}.pdf`);
-      showToast('PDF 100x100mm descargado', 'neonCyan');
+      const pdf = new jsPDF({
+        orientation: isGuide ? 'portrait' : 'landscape',
+        unit: 'mm',
+        format: [widthMm, heightMm]
+      });
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, widthMm, heightMm);
+      pdf.save(`${baseName}_${suffix}.pdf`);
+      showToast(`PDF ${widthMm}x${heightMm}mm descargado`, 'neonCyan');
     }
 
     function exportShippingPDF() {
